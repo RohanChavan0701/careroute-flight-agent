@@ -7,9 +7,12 @@ from typing import Optional
 class Config:
     """Application configuration loaded from environment."""
     
-    # NATS
+    # NATS (legacy)
     NATS_URL: str = os.getenv("NATS_URL", "nats://localhost:4222")
     NATS_SUBJECT: str = "guardian.flight.get_status.v1"
+    
+    # A2A Protocol
+    A2A_PORT: int = int(os.getenv("A2A_PORT", "8001"))
     
     # Provider
     PROVIDER: str = os.getenv("PROVIDER", "flightaware")
