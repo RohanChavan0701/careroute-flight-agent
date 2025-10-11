@@ -1,24 +1,22 @@
-"""A2A Protocol JSON-RPC 2.0 server for flight-agent.
+"""Simplified A2A Flight Agent - Core flight tracking only.
 
-Implements the Agent2Agent protocol for agent interoperability.
-https://github.com/a2aproject/A2A
+Removes voice/SSML components, focuses on pure flight data.
 """
 
 import json
 import logging
 from datetime import datetime
 from typing import Any, Dict, Optional
-from uuid import uuid4
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
 from .config import config
 from .provider import FlightAwareProvider, ProviderError, compute_hash
 from .mock_provider import MockProvider
-from .schemas import FlightStatusRequest, FlightRaw
 from .summarizer import GroqSummarizer
+from .schemas import FlightStatusRequest, FlightRaw, Script
 
 # Configure logging
 logging.basicConfig(
@@ -52,22 +50,19 @@ class JsonRpcResponse(BaseModel):
     id: Optional[str | int] = None
 
 
-# JSON-RPC Error Codes
+# Error codes
 class ErrorCode:
     PARSE_ERROR = -32700
     INVALID_REQUEST = -32600
     METHOD_NOT_FOUND = -32601
     INVALID_PARAMS = -32602
     INTERNAL_ERROR = -32603
-    
-    # Custom error codes
     PROVIDER_ERROR = -32000
-    SUMMARIZER_ERROR = -32001
 
 
-# A2A Flight Agent
-class A2AFlightAgent:
-    """Flight agent implementing A2A protocol."""
+# Simplified Flight Agent (no voice components)
+class SimpleFlightAgent:
+    """Simplified flight agent - core tracking only."""
     
     def __init__(self):
         # Select provider based on config
@@ -78,19 +73,21 @@ class A2AFlightAgent:
             self.provider = FlightAwareProvider()
             provider_name = "FlightAware AeroAPI v4"
         
-        self.summarizer = GroqSummarizer()
         self._provider_name = provider_name
         
-        # Agent Card metadata
+        # Initialize Groq summarizer
+        self.summarizer = GroqSummarizer()
+        
+        # Agent Card with Groq summarization
         self.agent_card = {
             "name": "Guardian Buddy Flight Agent",
-            "description": "Provides real-time flight status information with AI-powered conversational summaries using FlightAware and Groq",
+            "description": "Real-time flight tracking with AI-powered conversational summaries",
             "version": "1.0.0",
             "url": f"http://localhost:{config.A2A_PORT}/a2a",
             "skills": [
                 {
                     "name": "get_flight_status",
-                    "description": "Get current flight status with normalized data and conversational summary",
+                    "description": "Get current flight status with normalized data",
                     "input_schema": {
                         "type": "object",
                         "properties": {
@@ -103,11 +100,6 @@ class A2AFlightAgent:
                                 "type": "string",
                                 "description": "Departure date in YYYY-MM-DD format",
                                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-                            },
-                            "locale": {
-                                "type": "string",
-                                "description": "Locale for time formatting (e.g., en-US, en-GB)",
-                                "default": "en-US"
                             }
                         },
                         "required": ["flight_num", "departure_date"]
@@ -115,23 +107,23 @@ class A2AFlightAgent:
                     "output_schema": {
                         "type": "object",
                         "properties": {
-                            "raw": {
+                            "flight_data": {
                                 "type": "object",
-                                "description": "Normalized flight data from FlightAware"
+                                "description": "Normalized flight data"
                             },
                             "script": {
                                 "type": "object",
-                                "description": "Conversational summary with text and SSML",
+                                "description": "AI-generated conversational summary",
                                 "properties": {
-                                    "text": {"type": "string"},
-                                    "ssml": {"type": "string"},
-                                    "style": {"type": "string"},
-                                    "locale": {"type": "string"}
+                                    "text": {"type": "string", "description": "Plain text summary"},
+                                    "ssml": {"type": "string", "description": "SSML for voice synthesis"},
+                                    "style": {"type": "string", "description": "Summary style"},
+                                    "locale": {"type": "string", "description": "Locale for formatting"}
                                 }
                             },
                             "hash": {
                                 "type": "string",
-                                "description": "Hash of raw data for caching"
+                                "description": "Hash of flight data for caching"
                             },
                             "generated_at": {
                                 "type": "string",
@@ -147,19 +139,20 @@ class A2AFlightAgent:
             ],
             "metadata": {
                 "provider": provider_name,
-                "ai_model": "Groq llama-3.1-8b-instant",
                 "capabilities": [
                     "Real-time flight tracking",
-                    "AI-powered summaries",
-                    "SSML for text-to-speech",
-                    "Locale-aware formatting",
+                    "Flight status monitoring",
+                    "Gate and terminal information",
+                    "Delay tracking",
+                    "AI-powered conversational summaries",
+                    "SSML voice synthesis",
                     "Retry logic with exponential backoff"
                 ]
             }
         }
     
     async def handle_get_flight_status(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle get_flight_status skill invocation."""
+        """Handle get_flight_status skill invocation - simplified."""
         
         try:
             # Validate params
@@ -201,39 +194,41 @@ class A2AFlightAgent:
                 data={"details": str(e)}
             )
         
-        # Generate summary
+        # Generate AI summary
         try:
             script = await self.summarizer.summarize(raw, request.locale)
         except Exception as e:
-            logger.warning(f"Summarizer error: {e}, using fallback")
-            # Summarizer has built-in fallback, this shouldn't fail
-            script = self.summarizer._fallback_summary(raw, request.locale)
+            logger.warning(f"Summarizer error: {e}")
+            # Fallback to basic summary
+            script = Script(
+                text=f"Flight {raw.flight_number} from {raw.origin_iata} to {raw.destination_iata}",
+                ssml=f"<speak>Flight {raw.flight_number} from {raw.origin_iata} to {raw.destination_iata}</speak>",
+                style="basic",
+                locale=request.locale
+            )
         
         # Compute hash
         hash_value = compute_hash(raw)
         
-        # Build result
+        # Build result with AI summary
         result = {
-            "raw": raw.model_dump(),
+            "flight_data": raw.model_dump(),
             "script": script.model_dump(),
             "hash": hash_value,
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "schema_version": "flight.status.v1"
         }
         
-        logger.info(f"Success: {request.flight_num} status={raw.status}")
-        
+        logger.info(f"Response: {request.flight_num} - {raw.status}")
         return result
     
     async def handle_json_rpc(self, rpc_request: JsonRpcRequest) -> JsonRpcResponse:
-        """Handle JSON-RPC 2.0 request."""
+        """Handle JSON-RPC request."""
         
         try:
-            # Route to appropriate skill
             if rpc_request.method == "get_flight_status":
                 result = await self.handle_get_flight_status(rpc_request.params)
                 return JsonRpcResponse(result=result, id=rpc_request.id)
-            
             else:
                 # Method not found
                 return JsonRpcResponse(
@@ -262,21 +257,22 @@ class A2AFlightAgent:
 
 # Create FastAPI app
 app = FastAPI(
-    title="Guardian Buddy Flight Agent (A2A)",
-    description="A2A-compliant flight status agent with FlightAware and Groq",
+    title="Guardian Buddy Flight Agent (Simplified)",
+    description="Core flight tracking agent - no voice components",
     version="1.0.0"
 )
 
-agent = A2AFlightAgent()
+agent = SimpleFlightAgent()
 
 
 @app.get("/")
 async def root():
     """Root endpoint with agent info."""
     return {
-        "agent": "Guardian Buddy Flight Agent",
+        "agent": "Guardian Buddy Flight Agent (Simplified)",
         "protocol": "A2A (Agent2Agent)",
         "version": "1.0.0",
+        "description": "Core flight tracking - no voice components",
         "endpoints": {
             "agent_card": "/agent.json",
             "rpc": "/a2a"
@@ -354,6 +350,7 @@ async def health():
     return {
         "status": "healthy",
         "provider": config.PROVIDER,
+        "description": "Core flight tracking agent",
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
@@ -361,10 +358,9 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     
-    logger.info(f"Starting A2A Flight Agent on port {config.A2A_PORT}")
+    logger.info(f"Starting Simplified Flight Agent on port {config.A2A_PORT}")
     logger.info(f"Provider: {config.PROVIDER}")
     logger.info(f"Agent Card: http://localhost:{config.A2A_PORT}/agent.json")
     logger.info(f"JSON-RPC Endpoint: http://localhost:{config.A2A_PORT}/a2a")
     
     uvicorn.run(app, host="0.0.0.0", port=config.A2A_PORT)
-

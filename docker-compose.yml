@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  flight-agent:
+    build: .
+    container_name: guardian-buddy-flight-agent
+    ports:
+      - "8001:8001"
+    environment:
+      # Provider configuration
+      - PROVIDER=flightaware
+      - FA_API_KEY=${FA_API_KEY}
+      - FA_BASE=https://aeroapi.flightaware.com/aeroapi
+      - FA_TIMEOUT_SEC=6
+      
+      # Groq LLM configuration
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=llama-3.1-8b-instant
+      - GROQ_TIMEOUT_SEC=10
+      
+      # A2A Protocol
+      - A2A_PORT=8001
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - flight-agent-network
+
+networks:
+  flight-agent-network:
+    driver: bridge
