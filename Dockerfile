@@ -17,7 +17,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY flight_agent/ ./flight_agent/
-COPY backend/ ./backend/
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash flightagent
