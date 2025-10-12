@@ -1,317 +1,375 @@
-# Guardian Buddy 🛡️
+# Guardian Buddy Flight Agent 🛡️✈️
 
-**Medical Tourism + Travel Guardian AI Agent**  
+**Real-time Flight Tracking AI Agent for Medical Tourism**  
 VT CodeFest 2025 Submission
 
 ---
 
-## 🎯 Vision
+## 🎯 What It Does
 
-A human-centered AI companion that tracks flights, confirms bookings, and keeps patients + families informed during medical tourism journeys—with privacy, reliability, and voice-first UX.
+Guardian Buddy is an AI-powered flight tracking agent that helps medical tourists and their families stay informed during their journey. It provides real-time flight status with AI-generated conversational summaries.
+
+**Key Features:**
+- ✅ Real-time flight tracking (FlightAware AeroAPI)
+- ✅ AI-powered natural language summaries (Groq LLM)
+- ✅ Voice-ready SSML output for text-to-speech
+- ✅ A2A Protocol (JSON-RPC 2.0) for agent interoperability
+- ✅ Docker containerized and production-ready
+- ✅ Deployed on AWS EC2
+
+---
+
+## 🚀 Live Demo
+
+**Endpoint:** `http://54.158.27.0:8001`
+
+### Quick Test
+
+```bash
+# Health check
+curl http://54.158.27.0:8001/health
+
+# Get agent capabilities
+curl http://54.158.27.0:8001/agent.json
+
+# Get flight status
+curl -X POST http://54.158.27.0:8001/a2a \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "get_flight_status",
+    "params": {
+      "flight_num": "DL2990",
+      "departure_date": "2025-10-11"
+    },
+    "id": "demo"
+  }'
+```
+
+**Example Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "flight_data": {
+      "airline": "DAL",
+      "flight_number": "DAL2990",
+      "origin_iata": "MSY",
+      "destination_iata": "DTW",
+      "status": "LANDED",
+      "gate": "C4",
+      "terminal": "M"
+    },
+    "script": {
+      "text": "Flight DAL2990 from MSY to DTW has landed at gate C4.",
+      "ssml": "<speak>Flight DAL2990 from MSY to DTW has landed at gate C4.</speak>"
+    }
+  }
+}
+```
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-├── backend/          # FastAPI services (flight, hotel, hospital, notify)
-├── agent/            # ChatGPT Agent config (system prompt, tool manifests)
-├── frontend/         # Flutter mobile app (patient + family views)
-├── infra/            # Docker, CI/CD, deployment configs
-└── docs/             # API reference, compliance, security
+┌─────────────────┐
+│   Orchestrator  │ (Medical Tourism Platform)
+│   (JSON-RPC)    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Flight Agent   │ ◄── A2A Protocol (JSON-RPC 2.0)
+│  (Docker/EC2)   │
+└────────┬────────┘
+         │
+         ├──► FlightAware AeroAPI (Real-time data)
+         └──► Groq LLM (AI summaries)
 ```
+
+**Tech Stack:**
+- **Backend:** Python 3.11, FastAPI, Pydantic
+- **APIs:** FlightAware AeroAPI v4, Groq LLM
+- **Protocol:** A2A (Agent2Agent) with JSON-RPC 2.0
+- **Deployment:** Docker, AWS EC2
+- **Monitoring:** Health checks, structured logging
 
 ---
 
-## ✅ What's Built (MVP)
+## 📡 API Specification
 
-### Backend - Flight Tracking API
-- ✅ **Provider-agnostic flight service** with normalized models
-- ✅ **60-second caching** and **rate limiting** (10 req/min per flight)
-- ✅ **Event timeline** (status changes, gate updates)
-- ✅ **LLM tool endpoint** for ChatGPT agent integration
-- ✅ **API key auth** with header redaction in logs
-- ✅ **Audit logging** for compliance trail
-- ✅ **HIPAA-aware design** (no PHI in logs/memory)
+### A2A Protocol Endpoint
 
-### Security & Compliance
-- ✅ `x-api-key` authentication
-- ✅ Input validation with Pydantic v2
-- ✅ Sensitive header redaction
-- ✅ CORS for mobile app
-- ✅ Audit events persisted to logs
+**POST** `/a2a`
 
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.14
-- `curl` or `httpie`
-
-### 1. Setup
-
-```bash
-cd backend
-
-# Create environment file
-cat > .env << 'EOF'
-API_KEY=dev-key
-ENV=development
-LOG_LEVEL=INFO
-PROVIDER_CACHE_TTL_SECONDS=60
-PROVIDER_RATE_LIMIT_PER_KEY_PER_MINUTE=10
-EOF
-
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Run Server
-
-```bash
-cd /path/to/Codefest
-source backend/.venv/bin/activate
-PYTHONPATH=$(pwd):$PYTHONPATH uvicorn backend.main:app --reload --port 8000
-```
-
-### 3. Test
-
-```bash
-# Health check
-curl http://localhost:8000/healthz
-
-# Track a flight
-curl -X POST http://localhost:8000/v1/flights/track \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: dev-key" \
-  -d '{
-    "airline_code": "AA",
-    "flight_number": "100",
-    "departure_date": "2025-10-11"
-  }'
-
-# Get flight status
-curl http://localhost:8000/v1/flights/AA-100-2025-10-11 \
-  -H "x-api-key: dev-key"
-
-# Get events
-curl http://localhost:8000/v1/flights/AA-100-2025-10-11/events \
-  -H "x-api-key: dev-key"
-
-# LLM tool endpoint
-curl -X POST http://localhost:8000/v1/tools/get_flight_status \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: dev-key" \
-  -d '{"flight_id": "AA-100-2025-10-11"}'
-```
-
-See [docs/API_TEST_EXAMPLES.md](docs/API_TEST_EXAMPLES.md) for more examples.
-
----
-
-## 📡 API Endpoints
-
-### Flight Tracking
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/v1/flights/track` | Start tracking a flight |
-| GET | `/v1/flights/{id}` | Get current flight status |
-| GET | `/v1/flights/{id}/events` | Get event timeline |
-| DELETE | `/v1/flights/{id}` | Stop tracking |
-
-### LLM Tools
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/v1/tools/get_flight_status` | Get status + natural language summary |
-
-### Health
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/healthz` | Server health check |
-
----
-
-## 🔐 Security Checklist
-
-- ✅ API key authentication (`x-api-key` header)
-- ✅ No PHI in LLM memory or logs
-- ✅ Redact sensitive headers (authorization, cookie, etc.)
-- ✅ Rate limiting per flight key
-- ✅ Input validation with Pydantic
-- ✅ Audit trail for all actions
-- ⏳ TLS in production deployment
-- ⏳ Secrets vault (AWS Secrets Manager / HashiCorp Vault)
-
----
-
-## 🔌 Flight Data Providers
-
-Guardian Buddy uses a **pluggable provider architecture**. Switch between providers using environment variables:
-
-### Mock Provider (Default - Demo)
-
-```bash
-export FLIGHT_PROVIDER=mock
-```
-
-**Deterministic statuses** based on `flight_number % 5`:
-
-| Flight # | Status | Example |
-|----------|--------|---------|
-| 100 | SCHEDULED | AA100 |
-| 456 | BOARDING | UA456 |
-| 202 | ACTIVE | BA202 |
-| 303 | DELAYED | DL303 |
-| 789 | LANDED | SW789 |
-
-**Cache:** 60s per flight key  
-**Rate Limit:** 10 req/min per flight key
-
-### AeroDataBox Provider (Real-Time Data)
-
-```bash
-export FLIGHT_PROVIDER=aerodatabox
-export AEROBOX_KEY=your_rapidapi_key
-```
-
-**Real-time flight data** via RapidAPI:
-- Live status updates
-- Gate and terminal info
-- Delay information
-- Scheduled vs estimated times
-
-**Get API key:** https://rapidapi.com/aedbx-aedbx/api/aerodatabox  
-**Cost:** $10-100/month
-
-### FlightAware Provider (Premium Data)
-
-```bash
-export FLIGHT_PROVIDER=flightaware
-export FLIGHTAWARE_API_KEY=your_api_key
-```
-
-**Industry-leading flight data:**
-- Best data quality
-- Global coverage
-- Predictive algorithms
-- Historical data
-
-**Get API key:** https://www.flightaware.com/commercial/aeroapi/  
-**Cost:** $89+/month
-
-### Comparison
-
-| Provider | Quality | Cost | Best For |
-|----------|---------|------|----------|
-| **Mock** | Demo | Free | Development, demos |
-| **AeroDataBox** | Excellent | $10-100/mo | Startups, staging |
-| **FlightAware** | Best | $89+/mo | Production, enterprise |
-
-See [docs/PROVIDER_INTEGRATION.md](docs/PROVIDER_INTEGRATION.md) for adding more providers.
-
----
-
-## 📂 Project Structure
-
-```
-backend/
-├── common/
-│   ├── auth.py          # x-api-key middleware
-│   ├── settings.py      # Environment config
-│   ├── logging_config.py # Redacted logging
-│   ├── errors.py        # Exception handlers
-│   └── audit.py         # Audit trail
-├── flight/
-│   ├── models.py        # Flight, Event, Request/Response models
-│   ├── repository.py    # In-memory storage
-│   ├── provider.py      # Mock provider with cache + rate limit
-│   ├── service.py       # Business logic
-│   ├── router.py        # CRUD endpoints
-│   └── tools_router.py  # LLM tool endpoint
-└── main.py              # FastAPI app factory
-
-agent/
-└── RULES.md             # Agent non-negotiables & privacy rules
-
-docs/
-├── FLIGHT_API.md        # API reference
-├── API_TEST_EXAMPLES.md # curl examples
-└── DEV_BACKEND.md       # Developer guide
-```
-
----
-
-## 🎤 ChatGPT Agent Integration
-
-The `/v1/tools/get_flight_status` endpoint is designed for ChatGPT Realtime Voice API:
-
-**Tool Manifest:**
+**Request:**
 ```json
 {
-  "name": "get_flight_status",
-  "description": "Get current flight status with natural language summary",
-  "parameters": {
-    "flight_id": {
-      "type": "string",
-      "description": "Flight ID (e.g., AA-100-2025-10-11)"
-    }
-  }
+  "jsonrpc": "2.0",
+  "method": "get_flight_status",
+  "params": {
+    "flight_num": "DL2990",
+    "departure_date": "2025-10-11",
+    "locale": "en-US"
+  },
+  "id": "request-123"
 }
 ```
 
-**Agent Rules:** See [agent/RULES.md](agent/RULES.md)
-- No PHI in memory
-- Uncertainty explicit in responses
-- Voice updates < 12 seconds
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "flight_data": {
+      "airline": "DAL",
+      "flight_number": "DAL2990",
+      "origin_iata": "MSY",
+      "origin_city": "New Orleans",
+      "destination_iata": "DTW",
+      "destination_city": "Detroit",
+      "scheduled_departure_local": "2025-10-11T12:40",
+      "estimated_departure_local": "2025-10-11T12:46",
+      "scheduled_arrival_local": "2025-10-11T15:09",
+      "estimated_arrival_local": "2025-10-11T15:23",
+      "gate": "C4",
+      "terminal": "M",
+      "status": "LANDED",
+      "delay_minutes": 14
+    },
+    "script": {
+      "text": "Flight DAL2990 from MSY to DTW has landed at gate C4.",
+      "ssml": "<speak>Flight DAL2990 from MSY to DTW has landed at gate C4. Departure was at <say-as interpret-as=\"time\">12:46</say-as> and arrival was at <say-as interpret-as=\"time\">15:23</say-as>.</speak>",
+      "style": "conversational",
+      "locale": "en-US"
+    },
+    "hash": "c98604221952dd7b",
+    "generated_at": "2025-10-11T23:45:24.600681Z",
+    "schema_version": "flight.status.v1"
+  },
+  "id": "request-123"
+}
+```
+
+### Agent Card
+
+**GET** `/agent.json`
+
+Returns A2A agent capabilities and metadata.
+
+### Health Check
+
+**GET** `/health`
+
+Returns service health status.
 
 ---
 
-## 🛠️ Next Steps
+## 🔌 A2A Protocol Integration
 
-### Phase 2 (Production Readiness)
-- [ ] Replace mock provider with real flight API
-- [ ] Add Redis/PostgreSQL for persistence
-- [ ] Deploy with TLS (AWS ECS / Railway / Fly.io)
-- [ ] Secrets management (AWS Secrets Manager)
-- [ ] Structured logging to CloudWatch / Datadog
-- [ ] E2E tests with pytest
+Guardian Buddy implements the [A2A Protocol](https://github.com/a2aproject/A2A) for agent interoperability.
 
-### Phase 3 (Full Product)
-- [ ] Hotel booking confirmation API
-- [ ] Hospital appointment verification API
-- [ ] Twilio/Firebase notifications
-- [ ] Flutter mobile app (patient + family views)
-- [ ] ChatGPT Agent voice interface
-- [ ] HIPAA compliance audit
+**Agent Card:**
+- Name: Guardian Buddy Flight Agent
+- Skills: `get_flight_status`
+- Protocol: JSON-RPC 2.0 over HTTP
+- Discovery: `/agent.json`
+
+**Why A2A?**
+- Standard protocol for AI agent communication
+- Easy integration with other agents
+- Discoverable capabilities
+- Interoperable across platforms
 
 ---
 
-## 📋 Judging Criteria Alignment
+## 🚀 Local Development
 
-### Hypothesis & Originality
-✅ **Trust-first medical tourism guardian** – AI orchestrates real actions (track flights, confirm bookings, notify family) with voice-first UX and privacy by design.
+### Prerequisites
+- Python 3.11+
+- Docker (optional)
 
-### Solution & Modeling
-✅ **LLM for intent + explanations; deterministic adapters for external APIs**  
-✅ **Event timeline + uncertainty captured explicitly** (e.g., "Gate A3 (low confidence)")
+### Quick Start
 
-### Cybersecurity
-✅ **API key auth, header redaction, Pydantic validation**  
-✅ **Rate limiting, 60s cache, audit logs**  
-✅ **No PHI in logs/memory; TLS in prod**
+```bash
+# Clone repository
+git clone https://github.com/rohanpc0701/Codefest_Flightapi.git
+cd Codefest_Flightapi
 
-### Demo Polish
-✅ **Working code with curl/HTTPie examples**  
-✅ **Clear architecture, API docs, agent rules**  
-✅ **Ready for live demo**
+# Set up environment
+cd flight_agent
+cp env.example .env
+# Edit .env with your API keys
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run agent
+python -m simple_a2a_server
+```
+
+### Docker Deployment
+
+```bash
+# Build image
+docker build -t flight-agent .
+
+# Run container
+docker run -p 8001:8001 \
+  -e FA_API_KEY=your_key \
+  -e GROQ_API_KEY=your_key \
+  flight-agent
+```
+
+See `DOCKER_GUIDE.md` for complete Docker documentation.
+
+---
+
+## 📊 Key Features
+
+### 1. Real-Time Flight Data
+- FlightAware AeroAPI v4 integration
+- Live status updates
+- Gate and terminal information
+- Delay tracking
+- Timezone-aware scheduling
+
+### 2. AI-Powered Summaries
+- Natural language flight status
+- Conversational tone
+- SSML for voice synthesis
+- Locale-specific formatting
+
+### 3. Production-Ready
+- Docker containerized
+- Health monitoring
+- Structured logging
+- Error handling with retry logic
+- Timezone handling (pytz)
+
+### 4. A2A Protocol Compliant
+- JSON-RPC 2.0
+- Agent discovery
+- Standard error codes
+- Skill-based architecture
+
+---
+
+## 🔐 Security & Privacy
+
+- ✅ API keys stored in environment variables
+- ✅ No sensitive data in logs
+- ✅ HTTPS-ready (Nginx configuration available)
+- ✅ Input validation with Pydantic
+- ✅ Rate limiting support
+- ✅ HIPAA-aware design (no PHI in responses)
+
+---
+
+## 📚 Documentation
+
+- **`DOCKER_GUIDE.md`** - Complete Docker setup
+- **`EC2_DOCKER_DEPLOYMENT.md`** - AWS deployment guide
+- **`A2A_PROTOCOL_GUIDE.md`** - A2A implementation details
+- **`PRODUCTION_ENHANCEMENTS.md`** - Monitoring, HTTPS, caching
+- **`FLIGHTAWARE_QUICKREF.md`** - FlightAware API reference
+
+---
+
+## 🎯 Use Cases
+
+### Medical Tourism
+- Track patient arrival flights
+- Notify family of delays
+- Coordinate airport pickups
+- Monitor connecting flights
+
+### Travel Coordination
+- Multi-leg journey tracking
+- Real-time status updates
+- Voice notifications
+- Family communication
+
+### Emergency Response
+- Track medical evacuation flights
+- Monitor ambulance flight status
+- Coordinate ground transport
+
+---
+
+## 🏆 Why Guardian Buddy?
+
+### Problem
+Medical tourists face uncertainty during travel:
+- Flight delays impact medical appointments
+- Families need real-time updates
+- Language barriers complicate communication
+- Multiple stakeholders need coordination
+
+### Solution
+AI agent that:
+- Tracks flights automatically
+- Generates human-friendly updates
+- Speaks multiple languages (locale support)
+- Integrates with other AI agents (A2A)
+
+### Impact
+- ✅ Reduced anxiety for patients
+- ✅ Better coordination for medical facilities
+- ✅ Improved family communication
+- ✅ Faster emergency response
+
+---
+
+## 📈 Future Enhancements
+
+- [ ] Multi-flight tracking
+- [ ] Proactive notifications
+- [ ] Hotel booking integration
+- [ ] Hospital appointment coordination
+- [ ] SMS/WhatsApp notifications
+- [ ] Mobile app integration
+- [ ] Multi-language support
+
+See `WHATS_NEXT.md` for detailed roadmap.
+
+---
+
+## 💰 Cost-Effective
+
+**Current Deployment:**
+- AWS EC2 Free Tier: $0/month (12 months)
+- FlightAware API: Free tier available
+- Groq LLM: Free tier available
+- **Total: $0/month** ✅
+
+**After Free Tier:**
+- EC2 t2.micro: $8.50/month
+- APIs: $10-20/month
+- **Total: ~$20/month**
+
+---
+
+## 🔧 Technical Highlights
+
+### Clean Architecture
+- Provider-agnostic design
+- Separation of concerns
+- Type-safe with Pydantic
+- Async/await throughout
+
+### Error Handling
+- Exponential backoff retry
+- Graceful degradation
+- Detailed error messages
+- Fallback responses
+
+### Performance
+- Async HTTP requests
+- Efficient data parsing
+- Minimal dependencies
+- Fast response times (<500ms)
 
 ---
 
@@ -323,5 +381,17 @@ Built for VT CodeFest 2025
 
 ## 📄 License
 
-MIT (for hackathon purposes)
+MIT License - See LICENSE file for details
 
+---
+
+## 🔗 Links
+
+- **Live Demo:** http://54.158.27.0:8001
+- **GitHub:** https://github.com/rohanpc0701/Codefest_Flightapi
+- **A2A Protocol:** https://github.com/a2aproject/A2A
+- **FlightAware API:** https://www.flightaware.com/commercial/aeroapi/
+
+---
+
+**Built with ❤️ for medical travelers and their families**
