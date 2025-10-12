@@ -1,4 +1,4 @@
-# Guardian Buddy Flight Agent 🛡️✈️
+# CareRoute Flight Agent 🛡️✈️
 
 **Real-time Flight Tracking AI Agent for Medical Tourism**  
 VT CodeFest 2025 Submission
@@ -7,7 +7,7 @@ VT CodeFest 2025 Submission
 
 ## 🎯 What It Does
 
-Guardian Buddy is an AI-powered flight tracking agent that helps medical tourists and their families stay informed during their journey. It provides real-time flight status with AI-generated conversational summaries.
+CareRoute is an AI-powered flight tracking agent that helps medical tourists and their families stay informed during their journey. It provides real-time flight status with AI-generated conversational summaries.
 
 **Key Features:**
 - ✅ Real-time flight tracking (FlightAware AeroAPI)
@@ -298,7 +298,7 @@ See `DOCKER_GUIDE.md` for complete Docker documentation.
 
 ---
 
-## 🏆 Why Guardian Buddy?
+## 🏆 Why CareRoute?
 
 ### Problem
 Medical tourists face uncertainty during travel:

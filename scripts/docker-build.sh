@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Docker build script for Guardian Buddy Flight Agent
+# Docker build script for CareRoute Flight Agent
 
 set -e
 
-echo "🐳 Building Guardian Buddy Flight Agent Docker Image"
+echo "🐳 Building CareRoute Flight Agent Docker Image"
 echo "=================================================="
 
 # Check if Docker is running
@@ -15,20 +15,20 @@ fi
 
 # Build the image
 echo "📦 Building Docker image..."
-docker build -t guardian-buddy-flight-agent:latest .
+docker build -t careroute-flight-agent:latest .
 
 echo ""
 echo "✅ Docker image built successfully!"
 echo ""
 echo "📋 Image details:"
-docker images guardian-buddy-flight-agent:latest
+docker images careroute-flight-agent:latest
 
 echo ""
 echo "🚀 To run the container:"
 echo "   docker run -p 8001:8001 \\"
 echo "     -e FA_API_KEY=your_key \\"
 echo "     -e GROQ_API_KEY=your_key \\"
-echo "     guardian-buddy-flight-agent:latest"
+echo "     careroute-flight-agent:latest"
 echo ""
 echo "🐳 Or use docker-compose:"
 echo "   cp env.example .env"

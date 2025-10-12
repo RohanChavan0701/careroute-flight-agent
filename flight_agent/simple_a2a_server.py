@@ -80,7 +80,7 @@ class SimpleFlightAgent:
         
         # Agent Card with Groq summarization
         self.agent_card = {
-            "name": "Guardian Buddy Flight Agent",
+            "name": "CareRoute Flight Agent",
             "description": "Real-time flight tracking with AI-powered conversational summaries",
             "version": "1.0.0",
             "url": f"http://localhost:{config.A2A_PORT}/a2a",

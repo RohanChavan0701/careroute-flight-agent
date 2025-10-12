@@ -3,7 +3,7 @@ version: '3.8'
 services:
   flight-agent:
     build: .
-    container_name: guardian-buddy-flight-agent
+    container_name: careroute-flight-agent
     ports:
       - "8001:8001"
     environment:
