@@ -175,10 +175,10 @@ class FlightAwareProvider:
             return "UNKNOWN"
             
         # Normalize status string - remove spaces, slashes, and convert to uppercase
-        normalized = status_str.upper().replace(" ", "").replace("/", "").replace("-", "")
+        normalized = status_str.upper().replace(" ", "").replace("/", "").replace("-", "").replace("_", "")
         
         # Check for specific patterns
-        if "ENROUTE" in normalized or "INROUTE" in normalized:
+        if "ENROUTE" in normalized or "INROUTE" in normalized or "INAIR" in normalized:
             return "IN_AIR"
         elif "ONROUTE" in normalized:
             return "IN_AIR"
@@ -207,4 +207,3 @@ def compute_hash(raw: FlightRaw) -> str:
     # Serialize to JSON with sorted keys
     json_str = raw.model_dump_json(exclude_none=True)
     return hashlib.sha256(json_str.encode()).hexdigest()[:16]
-
