@@ -34,8 +34,8 @@ FastAPI /a2a (JSON-RPC 2.0)
 Python 3.11+ is recommended.
 
 ```bash
-git clone https://github.com/RohanChavan0701/Codefest_Flightapi.git
-cd Codefest_Flightapi
+git clone https://github.com/RohanChavan0701/careroute-flight-agent.git
+cd careroute-flight-agent
 python3 -m pip install -r flight_agent/requirements.txt
 
 # No provider credentials required in mock mode.
