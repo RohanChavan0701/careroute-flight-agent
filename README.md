@@ -34,7 +34,7 @@ FastAPI /a2a (JSON-RPC 2.0)
 Python 3.11+ is recommended.
 
 ```bash
-git clone https://github.com/rohanpc0701/Codefest_Flightapi.git
+git clone https://github.com/RohanChavan0701/Codefest_Flightapi.git
 cd Codefest_Flightapi
 python3 -m pip install -r flight_agent/requirements.txt
 
